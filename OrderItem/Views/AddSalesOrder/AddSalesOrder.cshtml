@@ -1,0 +1,173 @@
+﻿@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+@{
+    @model IEnumerable<OrderItem.Models.Customer>
+}
+<h2>Create Sales Order</h2>
+
+<!-- Sales Order Form -->
+<div class="form-group row">
+    <!-- Sales Order Number -->
+    <div class="col-md-6">
+        <label for="OrderNumber">Sales Order Number</label>
+        <input type="text" id="OrderNumber" name="OrderNumber" class="form-control" placeholder="Enter Sales Order Number" />
+    </div>
+
+    <!-- Customer Dropdown -->
+    <div class="col-md-6">
+        <label for="Customer">Customer</label>
+        <select id="Customer" name="Customer" class="form-control">
+            <option value="">-- Select Customer --</option>
+            @foreach (var customer in Model)
+            {
+                <option value="@customer">@customer.Name</option>
+            }
+        </select>
+    </div>
+</div>
+
+<div class="form-group row mt-3">
+    <!-- Order Date -->
+    <div class="col-md-6">
+        <label for="OrderDate">Order Date</label>
+        <input type="date" id="OrderDate" name="OrderDate" class="form-control" />
+    </div>
+
+    <!-- Address -->
+    <div class="col-md-6">
+        <label for="Address">Address</label>
+        <textarea id="Address" name="Address" class="form-control" placeholder="Enter Address"></textarea>
+    </div>
+</div>
+
+<!-- Add Item Button -->
+<div class="mt-4">
+    <button id="addItemButton" class="btn btn-primary">Add Item</button>
+</div>
+
+<!-- Order Items Table -->
+<table class="table mt-3" id="orderItemsTable">
+    <thead>
+        <tr>
+            <th>No</th>
+            <th>Action</th>
+            <th>Item Name</th>
+            <th>Quantity</th>
+            <th>Price</th>
+            <th>Total</th>
+        </tr>
+    </thead>
+    <tbody>
+        <!-- Rows will be dynamically added -->
+    </tbody>
+</table>
+
+<!-- Save and Close Buttons -->
+<div class="mt-4">
+    <button id="saveButton" class="btn btn-success">Save</button>
+    <button id="closeButton" class="btn btn-danger">Close</button>
+</div>
+
+<!-- Include jQuery -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script>
+    $(document).ready(function () {
+        let rowIndex = 1;
+
+        // Add Item Button Click
+        $('#addItemButton').click(function () {
+            addEditableRow(rowIndex);
+            rowIndex++;
+        });
+
+        // Add an editable row
+        function addEditableRow(index) {
+            const row = `
+                <tr data-row="${index}">
+                    <td>${index}</td>
+                    <td>
+                        <button class="btn btn-success saveItemButton">Save</button>
+                    </td>
+                    <td><input type="text" class="form-control itemName" placeholder="Enter Item Name" /></td>
+                    <td><input type="number" class="form-control quantity" placeholder="Enter Quantity" /></td>
+                    <td><input type="number" class="form-control price" placeholder="Enter Price" /></td>
+                    <td class="total">0.00</td>
+                </tr>
+            `;
+            $('#orderItemsTable tbody').append(row);
+        }
+
+        // Save Item Button Click
+        $(document).on('click', '.saveItemButton', function () {
+            const row = $(this).closest('tr');
+            const itemName = row.find('.itemName').val();
+            const quantity = parseInt(row.find('.quantity').val()) || 0;
+            const price = parseFloat(row.find('.price').val()) || 0;
+            const total = (quantity * price).toFixed(2);
+
+            if (!itemName || quantity <= 0 || price <= 0) {
+                alert('Please fill all fields correctly.');
+                return;
+            }
+
+            // Save the data to the database via AJAX (mocked here)
+            console.log({ itemName, quantity, price, total });
+
+            // Make the row non-editable
+            row.html(`
+                <td>${row.data('row')}</td>
+                <td></td>
+                <td>${itemName}</td>
+                <td>${quantity}</td>
+                <td>${price}</td>
+                <td>${total}</td>
+            `);
+
+            // Add a new editable row
+            $('#addItemButton').click();
+        });
+
+        // Save Button Click
+        $('#saveButton').click(function () {
+            const items = [];
+            $('#orderItemsTable tbody tr').each(function () {
+                const row = $(this);
+                const itemName = row.find('.itemName').val() || row.find('td:nth-child(3)').text();
+                const quantity = parseInt(row.find('.quantity').val()) || parseInt(row.find('td:nth-child(4)').text());
+                const price = parseFloat(row.find('.price').val()) || parseFloat(row.find('td:nth-child(5)').text());
+                const total = (quantity * price).toFixed(2);
+                const orderno = $('#OrderNumber').val();
+                const orderdate = $('#OrderDate').val();
+                const customername = $('#Customer option:selected').text();
+                const address = $('#Address').val();
+
+                if (itemName) {
+                    items.push({ itemName, quantity, price, total, orderno, orderdate, customername, address });
+                }
+            });
+
+            // POST the data to the server
+            // Send data to the controller
+            $.ajax({
+                url: '/AddSalesOrder/SaveTableData', // Controller action URL
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(items),
+                success: function (response) {
+                    alert(response.message);
+                    window.location.href = '/Order/OrderAction';
+                },
+                error: function () {
+                    alert('An error occurred while saving data.');
+                }
+            });
+        });
+
+        // Close Button Click
+        $('#closeButton').click(function () {
+            window.location.href = '/Order/OrderAction'; // Redirect to another page
+        });
+    });
+</script>
